@@ -225,7 +225,8 @@ class KarmaBehavior extends Behavior {
     return new Promise(resolve => {
       this.bot.getUserById(userId).then(user => {
         Karma.findOrCreate({
-          entityId: `person|${user.id}`
+          entityName: user.id,
+          entityKind: 'person'
         }).then(karma => {
           resolve({
             karma,
@@ -243,7 +244,8 @@ class KarmaBehavior extends Behavior {
 
     return new Promise(resolve => {
       Karma.findOrCreate({
-        entityId: `thing|${sanitized}`,
+        entityName: sanitized,
+        entityKind: 'thing',
         name: thing
       }).then(karma => {
         resolve({
