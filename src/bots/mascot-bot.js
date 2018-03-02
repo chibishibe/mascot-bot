@@ -1,8 +1,5 @@
 import SlackBot from 'slackbots';
-import mongoose from 'mongoose';
 
-// We want to use native promises
-mongoose.Promise = global.Promise;
 const COMMAND_REGEX = /^!(\S+)/g;
 
 /**
@@ -27,11 +24,6 @@ const COMMAND_REGEX = /^!(\S+)/g;
  *
  * Whether or not we should use a Mongo Database
  *
- * @property {String} database
- *
- * Name of the database that should be used. If one is not provided, will attempt
- * to use DATABASE_NAME from the process
- *
  * @property {Array<Behavior|Object>} behaviors
  *
  * Custom behaviors for our bot, can be either a Behavior constructor class on
@@ -48,15 +40,6 @@ class MascotBot extends SlackBot {
   constructor(settings = {}) {
     const name = settings.name || 'Mascot Bot';
     let token = '';
-
-    if (settings.useDatabase) {
-      if (process.env.DATABASE_NAME) {
-        settings.database = process.env.DATABASE_NAME;
-      }
-      else if (!settings.database) {
-        throw new Error('No database name provided');
-      }
-    }
 
     if (settings.token) {
       token = settings.token;
@@ -83,8 +66,6 @@ class MascotBot extends SlackBot {
    * @parent MascotBot
    * @param {String} message Message to log out.
    * @param {Boolean} [error = false] Whether or not the log is an error.
-   * @description Launches the bot to be used, connecting to a provided database
-   * as well as initializes any behaviors provided to the bot.
    */
   log(message, error = false) {
     // eslint-disable-next-line no-console
@@ -94,14 +75,11 @@ class MascotBot extends SlackBot {
   /**
    * @function MascotBot.launch launch
    * @parent MascotBot
-   * @description Launches the bot to be used, connecting to a provided database
-   * as well as initializes any behaviors provided to the bot.
+   * @description Launches the bot to be used, as well as initializes any
+   * behaviors provided to the bot.
    */
   launch() {
     this.on('start', () => {
-      if (this.settings.useDatabase) {
-        this._connectDatabase(this.settings.database, this.settings.databaseSettings);
-      }
       this._setupBehaviors();
 
       // Mascot bot will listen whenever any message comes through and parse it
@@ -133,7 +111,6 @@ class MascotBot extends SlackBot {
     });
 
     this.on('close', () => {
-      mongoose.connection.close();
       this._destroyBehaviors();
     });
   }
@@ -162,15 +139,6 @@ class MascotBot extends SlackBot {
       channel,
       topic
     });
-  }
-
-  _connectDatabase(database, options) {
-    if (options.user) {
-      mongoose.connect(`mongodb://${options.user}:${options.password}@localhost/${database}`, options);
-    }
-    else {
-      mongoose.connect(`mongodb://localhost/${database}`, options);
-    }
   }
 
   _setupBehaviors() {

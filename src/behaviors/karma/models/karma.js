@@ -1,128 +1,98 @@
-import mongoose from 'mongoose';
-import _ from 'lodash';
+import sqlite3 from 'sqlite3';
 
-const QUALITY = ['positive', 'negative'];
+let db = new sqlite3.Database('karma.db')
+db.run('CREATE TABLE IF NOT EXISTS points (subject UNIQUE, value DEFAULT 0, max DEFAULT 0, min DEFAULT 0);')
+db.run('CREATE TABLE IF NOT EXISTS reasons (subject, quality, reason);')
 
-const Karma = new mongoose.Schema({
-  entityId: {
-    type: String,
-    unique: true,
-    required: true
-  },
-  name: {
-    type: String,
-    default: '',
-  },
-  karma: {
-    type: Number,
-    default: 0
-  },
-  lowest: {
-    type: Number,
-    default: 0
-  },
-  highest: {
-    type: Number,
-    default: 0
-  },
-  reasons: [{
-    reason: String,
-    quality: {
-      type: String,
-      enum: QUALITY
+// Stub for referring to a single entry (by subject)
+class KarmaEntry {
+  constructor(subject) {
+    this.subject = subject;
+    db.run('INSERT OR IGNORE INTO points (subject) VALUES (?);', subject);
+  }
+
+  change(amt, reason) {
+    let promises = [];
+    if(reason) {
+      promises.push(db.run('INSERT INTO reasons VALUES (?, ?, ?);', this.subject, (amt >= 0 ? 'positive' : 'negative'), reason));
     }
-  }]
-});
+    promises.push((new Promise(resolve => db.run('UPDATE points SET value = value + ? WHERE subject = ?;', [amt, this.subject], resolve))).then(() => {
+      // This needs to be done *after* the update above:
+      db.run('UPDATE points SET min = min(value, min), max = max(value, max) WHERE subject = ?;', this.subject);
+    }));
+    return Promise.all(promises);
+  }
 
-Karma.virtual('entityName').get(function entityName() {
-  return this.entityId.split('|')[1];
-});
+  increment(amt, reason) {
+    return this.change(amt, reason);
+  }
 
-Karma.static('stripQuotes', name => name.match(/^["|“|”]/) ? name.slice(1, -1) : name);
+  decrement(amt, reason) {
+    return this.change(-amt, reason);
+  }
 
-Karma.static('sanitize', name => escape(name.replace(' ', '_')).replace(/\W/g, '').toLowerCase());
+  save() {
+    // No-op
+  }
 
-Karma.static('findOrCreate', function findOrCreate(params) {
-  return new Promise((resolve) => {
-    this.findOne(params).then((karma) => {
-      if (karma) {
-        resolve(karma);
-      }
-      else {
-        const newKarma = new this(params);
-        newKarma.save();
-
-        resolve(newKarma);
-      }
+  sample(amt = 5, quality = 'positive') {
+    return new Promise((resolve, fail) => {
+      let result = [];
+      db.each('SELECT reason FROM reasons WHERE subject = ? AND quality = ? ORDER BY random() LIMIT ?', [this.subject, quality, amt], (err, row) => err ? fail(err) : result.push(row), () => resolve(result));
     });
-  });
-});
-
-Karma.method('increment', function increment(total = 1, reason) {
-  this.karma += total;
-
-  if (this.karma > this.highest) {
-    this.highest = this.karma;
   }
 
-  if (reason) {
-    const karmaReason = {
-      owner: this._id,
-      quality: 'positive',
-      reason
-    };
-
-    this.reasons.push(karmaReason);
-  }
-  return this;
-});
-
-
-Karma.method('decrement', function decrement(total = 1, reason) {
-  this.karma -= total;
-
-  if (this.karma < this.lowest) {
-    this.lowest = this.karma;
+  get entityKind() {
+    return this.subject.split('|', 2)[0];
   }
 
-  if (reason) {
-    const karmaReason = {
-      owner: this._id,
-      quality: 'negative',
-      reason
-    };
-
-    this.reasons.push(karmaReason);
-  }
-  return this;
-});
-
-Karma.method('sample', function sample(total = 5, type = 'positive') {
-  return _.chain(this.reasons).filter({
-    quality: type
-  }).sampleSize(total).value();
-});
-
-Karma.static('list', function list(sortBy = 'desc', total = 10, delimiter) {
-  if (sortBy !== 'asc' && sortBy !== 'desc') {
-    sortBy = 'desc';
+  get entityName() {
+    return this.subject.split('|').slice(1).join('|');
   }
 
-  if (delimiter && delimiter !== 'person' && delimiter !== 'thing') {
-    delimiter = undefined;
+  get karma() {
+    return new Promise((resolve, fail) => db.get('SELECT value FROM points WHERE subject = ?', [this.subject], (err, row) => err ? fail(err): resolve(row.value)));
   }
 
-  return new Promise(resolve => {
-    this.find().then(karma => {
-      resolve(_.chain(karma).orderBy('karma', sortBy).filter(karmaItem => {
-        if (delimiter) {
-          return karmaItem.entityId.includes(delimiter);
-        }
+  get highest() {
+    return new Promise((resolve, fail) => db.get('SELECT max FROM points WHERE subject = ?', [this.subject], (err, row) => err ? fail(err): resolve(row.max)));
+  }
 
-        return karmaItem;
-      }).take(total).value());
+  get lowest() {
+    return new Promise((resolve, fail) => db.get('SELECT min FROM points WHERE subject = ?', [this.subject], (err, row) => err ? fail(err): resolve(row.min)));
+  }
+}
+
+// Main interface
+class Karma {
+  static stripQuotes(name) {
+    return name.match(/^["|“|”]/) ? name.slice(1, -1) : name;
+  }
+
+  static sanitize(name) {
+    // The current model does not need input sanitization, but case folding is
+    // a good thing anyway
+    return name.toLowerCase();
+  }
+
+  static findOrCreate(params) {
+    return Promise.resolve(new KarmaEntry(params.entityId));
+  }
+
+  static list(ord, amt, kind) {
+    return new Promise((resolve, fail) => {
+      let result = [];
+      let stmt = 'SELECT subject FROM points';
+      if(kind) {
+        stmt += ' WHERE subject LIKE $kind || "|%"';
+      }
+      stmt += ` ORDER BY value ${ord == 'asc' ? 'ASC' : 'DESC'} LIMIT $amt`;
+      db.each(stmt, {
+        $kind: kind,
+        $amt: amt
+      }, (err, row) => err ? fail(err) : result.push(new KarmaEntry(row.subject)), () => resolve(result));
     });
-  });
-});
+  }
+}
 
-export default mongoose.model('karma', Karma);
+export default Karma;

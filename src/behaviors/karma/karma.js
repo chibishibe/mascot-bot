@@ -70,20 +70,20 @@ class KarmaBehavior extends Behavior {
           method = shouldIncrement ? 'increment' : 'decrement';
         let message = '';
 
-        if (karma[method]) {
-          karma[method](1, reason);
-          karma.save();
-        }
+        const changePromise = karma[method](1, reason);
 
         // If you wanna take karma away from yourself, who am I to stop you?
         if (userId === messageData.user) {
           message = `¯\\_(ツ)_/¯ it's your funeral, <@${user.id}|${user.name}>. `;
         }
-        message += `<@${user.id}|${user.name}>'s karma has changed to ${karma.karma}.`;
 
-        this.bot.postMessage(channel, message, {
-          icon_emoji: shouldIncrement ? ':karma:' : ':discentia:',
-          thread_ts: messageData.thread_ts
+        changePromise.then(() => karma.karma).then(points => {
+          message += `<@${user.id}|${user.name}>'s karma has changed to ${points}.`;
+
+          this.bot.postMessage(channel, message, {
+            icon_emoji: shouldIncrement ? ':dpupvote:' : ':dpdownvote:',
+            thread_ts: messageData.thread_ts
+          });
         });
       });
     }
@@ -104,16 +104,15 @@ class KarmaBehavior extends Behavior {
           method = shouldIncrement ? 'increment' : 'decrement';
         let message = '';
 
-        if (karma[method]) {
-          karma[method](1, reason);
-          karma.save();
-        }
+        const changePromise = karma[method](1, reason);
 
-        message += `${thing}'s karma has changed to ${karma.karma}.`;
+        changePromise.then(() => karma.karma).then(points => {
+          message += `${thing}'s karma has changed to ${points}.`;
 
-        this.bot.postMessage(channel, message, {
-          icon_emoji: shouldIncrement ? ':karma:' : ':discentia:',
-          thread_ts: messageData.thread_ts
+          this.bot.postMessage(channel, message, {
+            icon_emoji: shouldIncrement ? ':dpupvote:' : ':dpdownvote:',
+            thread_ts: messageData.thread_ts
+          });
         });
       });
     }
@@ -143,18 +142,21 @@ class KarmaBehavior extends Behavior {
     LIST_REGEX.lastIndex = 0;
 
     Karma.list(isTop ? 'desc' : 'asc', 10, entity).then(karmaList => {
-      karmaList.forEach(karma => {
-        if (karma.name) {
-          karmaMessage += `${karma.karma} ${karma.name}\n`;
-        }
-        else {
-          karmaMessage += `${karma.karma} <@${karma.entityName}>\n`;
-        }
-      });
+      Promise.all(karmaList.map(karma => karma.karma)).then(pointsList => {
+        karmaList.forEach((karma, idx) => {
+          const points = pointsList[idx];
+          if (karma.entityKind == 'thing') {
+            karmaMessage += `${points} ${karma.entityName}\n`;
+          }
+          else {
+            karmaMessage += `${points} <@${karma.entityName}>\n`;
+          }
+        });
 
-      this.bot.postMessage(channel, karmaMessage, {
-        icon_emoji: `:${isTop ? 'karma' : 'discentia'}:`,
-        thread_ts: data.thread_ts
+        this.bot.postMessage(channel, karmaMessage, {
+          icon_emoji: `:${isTop ? 'dpupvote' : 'dpdownvote'}:`,
+          thread_ts: data.thread_ts
+        });
       });
     });
   }
@@ -174,40 +176,48 @@ class KarmaBehavior extends Behavior {
       this.bot.users = undefined;
       this._getKarmaAndUser(userId).then(data => {
         const user = data.user,
-          karma = data.karma,
-          positive = karma.sample(5, 'positive').map(reason => reason.reason).join('; '),
-          negative = karma.sample(5, 'negative').map(reason => reason.reason).join('; ');
+          karma = data.karma;
 
-        this._postKarma(channel, `<@${user.id}|${user.name}>`, karma, positive, negative, messageData);
+        Promise.all([karma.sample(5, 'positive'), karma.sample(5, 'negative')]).then(([samplePos, sampleNeg]) => {
+          const positive = samplePos.map(reason => reason.reason).join('; ');
+          const negative = sampleNeg.map(reason => reason.reason).join('; ');
+
+          this._postKarma(channel, `<@${user.id}|${user.name}>`, karma, positive, negative, messageData);
+        });
       });
     }
     else if (thing) {
       this._getKarmaAndThing(thing).then(data => {
         const thing = data.thing,
-          karma = data.karma,
-          positive = karma.sample(5, 'positive').map(reason => reason.reason).join('; '),
-          negative = karma.sample(5, 'negative').map(reason => reason.reason).join('; ');
+          karma = data.karma;
 
-        this._postKarma(channel, `"${thing}"`, karma, positive, negative, messageData);
+        Promise.all([karma.sample(5, 'positive'), karma.sample(5, 'negative')]).then(([samplePos, sampleNeg]) => {
+          const positive = samplePos.map(reason => reason.reason).join('; ');
+          const negative = sampleNeg.map(reason => reason.reason).join('; ');
+
+          this._postKarma(channel, `"${thing}"`, karma, positive, negative, messageData);
+        });
       });
     }
   }
 
   _postKarma(channel, thing, karma, positive, negative, messageData) {
-    let karmaMessage = `${thing} has ${karma.karma} karma. The highest it's ` +
-      `ever been was ${karma.highest} and the lowest it's ever been was ${karma.lowest}.\n\n`;
+    Promise.all([karma.karma, karma.highest, karma.lowest]).then(([points, highest, lowest]) => {
+      let karmaMessage = `${thing} has ${points} karma. The highest it's ` +
+        `ever been was ${highest} and the lowest it's ever been was ${lowest}.\n\n`;
 
-    if (positive) {
-      karmaMessage += `Positive: ${positive}\n`;
-    }
+      if (positive) {
+        karmaMessage += `Positive: ${positive}\n`;
+      }
 
-    if (negative) {
-      karmaMessage += `Negative: ${negative}\n`;
-    }
+      if (negative) {
+        karmaMessage += `Negative: ${negative}\n`;
+      }
 
-    this.bot.postMessage(channel, karmaMessage, {
-      icon_emoji: ':karma:',
-      thread_ts: messageData.thread_ts
+      this.bot.postMessage(channel, karmaMessage, {
+        icon_emoji: ':dpupvote:',
+        thread_ts: messageData.thread_ts
+      });
     });
   }
 
