@@ -20,7 +20,7 @@ class Birthdays extends Behavior {
 
   initialize(bot) {
     super.initialize(bot);
-    this.scheduleJob('0 15 * * *', () => {
+    this.scheduleJob('0 7 * * *', () => {
       bot.users = undefined;
       this.checkForBirthdays(bot).then(users => {
         this.announceBirthday(bot, users, false, this.settings.sayInChannel).then(() => {
@@ -111,7 +111,7 @@ class Birthdays extends Behavior {
 
     if (!users && announceNoBirthdays) {
        return bot.postMessage(channel, `There are no birthdays today, check again tomorrow.`, {
-        icon_emoji: ':cake:',
+        icon_emoji: ':partyhoof_beatz:',
         thread_ts: messageData.thread_ts
       });
     }
@@ -135,7 +135,7 @@ class Birthdays extends Behavior {
     });
 
     return bot.postMessage(channel, message, {
-      icon_emoji: ':cake:',
+      icon_emoji: ':partyhoof_beatz:',
       thread_ts: messageData.thread_ts
     });
   }
