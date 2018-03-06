@@ -1,6 +1,6 @@
 import Behavior from '../behavior.js';
 
-const EMPH_CMD_RE = /!(:[\w-]+:) /;
+const EMPH_CMD_RE = /^!(:[\w-]+:) /;
 
 class Emphasis extends Behavior {
   constructor(settings) {
