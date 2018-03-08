@@ -23,7 +23,7 @@ class RandomChannel extends Behavior {
   initialize(bot) {
     super.initialize(bot);
 
-    this.scheduleJob('0 12 * * *', () => {
+    this.scheduleJob('30 16 * * *', () => {
       this.sayRandomChannel(bot);
     });
   }
@@ -48,7 +48,7 @@ class RandomChannel extends Behavior {
           `${channelPurpose}${period} ${checkIt}`;
 
       bot.postMessage(this.settings.sayInChannel, randomChannelMessage, {
-        icon_emoji: ':slack:'
+        icon_emoji: ':hoof_beatz:'
       });
     }, error => {
       bot.log(error, true);

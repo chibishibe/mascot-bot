@@ -20,13 +20,13 @@ class Birthdays extends Behavior {
 
   initialize(bot) {
     super.initialize(bot);
-    this.scheduleJob('0 7 * * *', () => {
+    this.scheduleJob('1 7 * * *', () => {
       bot.users = undefined;
       this.checkForBirthdays(bot).then(users => {
         this.announceBirthday(bot, users, false, this.settings.sayInChannel).then(() => {
           this.updateTopic(bot, users);
           this.giveKarma(bot, users);
-        });
+        }).catch(()=>{});
       });
     });
   }
@@ -63,7 +63,7 @@ class Birthdays extends Behavior {
       this.bot.users = undefined;
       this.checkForBirthdays(this.bot).then(users => {
         this.announceBirthday(this.bot, users, true, channel, messageData);
-      });
+      }).catch(()=>{});
     }
   }
 
@@ -106,11 +106,11 @@ class Birthdays extends Behavior {
     });
   }
 
-  announceBirthday(bot, users, announceNoBirthdays = false, channel, messageData) {
+  announceBirthday(bot, users, announceNoBirthdays = false, channel, messageData = {}) {
     let message = `Happy birthday to:`;
 
     if (!users && announceNoBirthdays) {
-       return bot.postMessage(channel, `There are no birthdays today, check again tomorrow.`, {
+       return bot.postMessage(channel, `Aw Jeez, I'm sorry, but there's no birthdays today. Tomarrow maybe?`, {
         icon_emoji: ':partyhoof_beatz:',
         thread_ts: messageData.thread_ts
       });
@@ -167,7 +167,7 @@ class Birthdays extends Behavior {
         token: bot.token,
         channel: channel.id,
         topic
-      }, (error) => {
+      }).catch((error) => {
         bot.log(topicFunction, true);
         bot.log(error, true);
       });

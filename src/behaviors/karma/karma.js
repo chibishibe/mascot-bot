@@ -215,7 +215,7 @@ class KarmaBehavior extends Behavior {
       }
 
       this.bot.postMessage(channel, karmaMessage, {
-        icon_emoji: ':dpupvote:',
+        icon_emoji: points >= 0 ? ':dpupvote:' : ':dpdownvote:',
         thread_ts: messageData.thread_ts
       });
     });
