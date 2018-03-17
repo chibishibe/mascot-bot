@@ -59,6 +59,50 @@ class MascotBot extends SlackBot {
     this.settings = settings;
     this._behaviors = settings.behaviors || [];
     this._behaviorCommands = [];
+
+    this._lastAct = Date.now();
+    this._alive = false;
+    this.on('message', (() => this._lastAct = Date.now()).bind(this));
+    setInterval(this.checkLiveness.bind(this), 2000);
+    this._numRetries = 0;
+    this.on('error', this.connectivityError.bind(this));
+    this.on('start', (() => {
+      this._numRetries = 0;
+      this._alive = true;
+    }).bind(this));
+    this.on('message', console.log);
+  }
+
+  checkLiveness() {
+    if(!this._alive) return;
+    if(Date.now() - this._lastAct > 10000) {
+      // FIXME: Sensible IDs?
+      this.ws.send(JSON.stringify({id: 0, type: "ping"}));
+    }
+
+    if(Date.now() - this._lastAct > 20000) {
+      this.log("Warning: No activity for 20s after a ping, reconnecting to API...");
+      this.teardownConnection();
+      this._alive = false;
+      this.login();
+    }
+  }
+
+  teardownConnection() {
+    if(this.ws == null) return;
+    this.ws.terminate();
+    setTimeout((() => {
+      if(this.ws) this.ws.removeAllListeners();
+      this.ws = null;
+    }).bind(this), 500);
+  }
+
+  connectivityError(e) {
+    this._numRetries += 1;
+    this.log(`Connectivity error (try ${this._numRetries}): ${e}`, true);
+    this.teardownConnection();
+    this.log("Retrying in 10s...");
+    setTimeout(this.login.bind(this), 10000);
   }
 
   /**
@@ -79,7 +123,7 @@ class MascotBot extends SlackBot {
    * behaviors provided to the bot.
    */
   launch() {
-    this.on('start', () => {
+    this.once('start', () => {
       this._setupBehaviors();
 
       // Mascot bot will listen whenever any message comes through and parse it

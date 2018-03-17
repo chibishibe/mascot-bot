@@ -54,7 +54,8 @@
     "moment": "^2.15.1",
     "node-eventbrite": "^0.0.13",
     "node-schedule": "^1.1.1",
-    "slackbots": "^1.0.2"
+    "slackbots": "^1.0.2",
+    "sqlite3": "^4.0.0"
   },
   "engines": {
     "node": "^6.0.0",
