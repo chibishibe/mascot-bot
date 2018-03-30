@@ -77,7 +77,14 @@ class MascotBot extends SlackBot {
     if(!this._alive) return;
     if(Date.now() - this._lastAct > 10000) {
       // FIXME: Sensible IDs?
-      this.ws.send(JSON.stringify({id: 0, type: "ping"}));
+      try {
+        this.ws.send(JSON.stringify({id: 0, type: "ping"}));
+      } catch(e) {
+        this.log("Error during send--assuming dead...");
+        this._alive = false;
+        this.teardownConnection();
+        this.login();
+      }
     }
 
     if(Date.now() - this._lastAct > 20000) {
