@@ -70,7 +70,6 @@ class MascotBot extends SlackBot {
       this._numRetries = 0;
       this._alive = true;
     }).bind(this));
-    this.on('message', console.log);
   }
 
   checkLiveness() {
