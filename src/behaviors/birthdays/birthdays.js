@@ -20,7 +20,7 @@ class Birthdays extends Behavior {
 
   initialize(bot) {
     super.initialize(bot);
-    this.scheduleJob('1 7 * * *', () => {
+    this.scheduleJob('2 7 * * *', () => {
       bot.users = undefined;
       this.checkForBirthdays(bot).then(users => {
         this.announceBirthday(bot, users, false, this.settings.sayInChannel).then(() => {
@@ -43,7 +43,11 @@ class Birthdays extends Behavior {
       }
 
       todaysBirthdays.forEach((person) => {
-        userPromises.push(bot.getUser(person.slackName));
+        try {
+          userPromises.push(bot.getUser(person.slackName));
+        } catch(e) {
+          bot.log(`error occured while fetching user data for '${person.slackName}': ${e}`);
+        }
       });
 
       return Promise.all(userPromises).then((users) => {
@@ -63,7 +67,7 @@ class Birthdays extends Behavior {
       this.bot.users = undefined;
       this.checkForBirthdays(this.bot).then(users => {
         this.announceBirthday(this.bot, users, true, channel, messageData);
-      }).catch(()=>{});
+      }).catch(console.log);
     }
   }
 
@@ -110,7 +114,7 @@ class Birthdays extends Behavior {
     let message = `Happy birthday to:`;
 
     if (!users && announceNoBirthdays) {
-       return bot.postMessage(channel, `Aw Jeez, I'm sorry, but there's no birthdays today. Tomarrow maybe?`, {
+       return bot.postMessage(channel, `Aw Jeez, I'm sorry, but there's no birthdays today. Tomarrow maybe? You can also add your birthday to the list by filling out my form! https://goo.gl/forms/rHuUAbM5UMpyA0jS2`, {
         icon_emoji: ':partyhoof_beatz:',
         thread_ts: messageData.thread_ts
       });

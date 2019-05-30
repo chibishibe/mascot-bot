@@ -27,7 +27,7 @@ class DaysUntil extends Behavior {
     const conDate = moment(this.settings.conDate),
       today = moment();
 
-    return conDate.diff(today, 'days') + 1;
+    return conDate.diff(today, 'days');
   }
 
   execute(command, message, channel, messageData) {

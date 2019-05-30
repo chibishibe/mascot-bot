@@ -29,14 +29,17 @@ class EventBrite extends Behavior {
   }
 
   execute(command, message, channel, messageData) {
-
-   this.bot.postMessage(channel, `Sorry guys, I'm good at dropping beatz, not numbers... I'll look around for you though okay? Here's a picture! https://goo.gl/DWWqs4`, {
+    if (!this.settings.WHITELIST[messageData.user]) {
+    
+     this.bot.postMessage(channel, `My Dearest, most faithful ~student~ staffer. You know that I value your diligence and I trust you completely, but you simply must stop reading those dusty old ~books~ badge statistics. Sincerely, ~Celestia~ BeatzBot`, {
       icon_emoji: `:hoof_beatz:`,
       thread_ts: messageData.thread_ts
     });
  
     return;
-
+    
+    }
+  
     this.client.get('events', `${this.settings.event_id}/ticket_classes`, [], [], (err, response) => {
       if (!err) {
         const tickets = response.ticket_classes.map(type => {
@@ -53,7 +56,7 @@ class EventBrite extends Behavior {
           const sum = tickets.map(type => type.sold).reduce((acc, current) => acc + current, 0);
 
           this.bot.postMessage(channel, `We have sold a total of ${sum} badges.`, {
-            icon_emoji: `:admission_tickets:`,
+            icon_emoji: `:hoof_beatz:`,
             thread_ts: messageData.thread_ts
           });
         }
@@ -65,7 +68,7 @@ class EventBrite extends Behavior {
           });
 
           this.bot.postMessage(channel, message, {
-            icon_emoji: `:admission_tickets:`,
+            icon_emoji: `:hoof_beatz:`,
             thread_ts: messageData.thread_ts
           });
         }

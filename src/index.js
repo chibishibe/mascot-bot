@@ -10,6 +10,7 @@ import Greet from './behaviors/greet/greet.js';
 import Impossible from './behaviors/impossible/impossible.js';
 import Shake from './behaviors/shake/shake.js';
 import Emphasis from './behaviors/emphasis/emphasis.js';
+import ConsoleTalk from './behaviors/consoletalk/consoletalk.js';
 import settings from './settings.json';
 
 
@@ -17,6 +18,7 @@ const mascot = new MascotBot({
   ...settings.bot,
   behaviors: [
     Emphasis,
+    ConsoleTalk,
     Shake,
     Impossible,
     Greet,
@@ -29,8 +31,8 @@ const mascot = new MascotBot({
     {
       behavior: DaysUntil,
       settings: {
-        conDate: '2018-07-26 09-05:00',
-        maxDays: 389,
+        conDate: '2019-08-01 09-05:00',
+        maxDays: 400,
         sayInChannel: '#all-staff',
         isPublic: true
       }
@@ -45,7 +47,7 @@ const mascot = new MascotBot({
     {
       behavior: Eventbrite,
       settings: settings.eventbrite
-    }
+    },
   ]
 });
 
